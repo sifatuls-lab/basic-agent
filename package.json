@@ -1,0 +1,19 @@
+{
+  "name": "agentmaster",
+  "version": "1.0.0",
+  "description": "AgentMaster multi-agent orchestration prototype with Express and TypeScript",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "agents",
+    "express",
+    "typescript",
+    "multi-agent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs"
+}

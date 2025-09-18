@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgentMaster Console</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+
+      body {
+        margin: 0;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, rgba(56, 189, 248, 0.1), transparent 55%),
+          #020617;
+      }
+
+      .chat-shell {
+        width: min(960px, 92vw);
+        height: min(640px, 90vh);
+        background: rgba(15, 23, 42, 0.92);
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 30px 60px -15px rgba(15, 23, 42, 0.8);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
+      }
+
+      header {
+        padding: 24px 28px 16px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 1.4rem;
+      }
+
+      header p {
+        margin: 6px 0 0;
+        font-size: 0.95rem;
+        color: rgba(226, 232, 240, 0.72);
+      }
+
+      #messages {
+        padding: 20px 28px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .message {
+        padding: 16px 18px;
+        border-radius: 18px;
+        line-height: 1.55;
+        white-space: pre-line;
+        background: rgba(30, 41, 59, 0.88);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      .message.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(14, 165, 233, 0.9));
+        color: #f8fafc;
+        box-shadow: 0 8px 25px -12px rgba(37, 99, 235, 0.8);
+      }
+
+      .message.assistant {
+        align-self: flex-start;
+      }
+
+      footer {
+        padding: 18px 24px 22px;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: rgba(15, 23, 42, 0.96);
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.85);
+        color: inherit;
+        font: inherit;
+        line-height: 1.4;
+      }
+
+      textarea:focus {
+        outline: 2px solid rgba(56, 189, 248, 0.4);
+        border-color: rgba(56, 189, 248, 0.4);
+      }
+
+      .actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      button {
+        padding: 12px 24px;
+        border-radius: 999px;
+        border: none;
+        font-weight: 600;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(14, 165, 233, 0.95));
+        color: #f8fafc;
+        cursor: pointer;
+        box-shadow: 0 12px 25px -12px rgba(56, 189, 248, 0.6);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 32px -16px rgba(56, 189, 248, 0.7);
+      }
+
+      .status-line {
+        font-size: 0.85rem;
+        color: rgba(226, 232, 240, 0.65);
+      }
+
+      details {
+        background: rgba(30, 41, 59, 0.65);
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 12px 16px;
+        color: rgba(226, 232, 240, 0.9);
+      }
+
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      code {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-shell">
+      <header>
+        <h1>AgentMaster</h1>
+        <p>Unified conversational hub orchestrating SQL, IR, and Vision agents via MCP + A2A.</p>
+      </header>
+      <div id="messages"></div>
+      <footer>
+        <textarea id="prompt" placeholder="Ask something—mix SQL, documents, or images." autofocus></textarea>
+        <div class="actions">
+          <div class="status-line" id="status">Idle</div>
+          <button id="send">Send</button>
+        </div>
+        <details id="debug-panel">
+          <summary>Debug transcript</summary>
+          <pre id="debug"></pre>
+        </details>
+      </footer>
+    </div>
+    <script>
+      const sessionId = crypto.randomUUID();
+      const messagesEl = document.getElementById('messages');
+      const promptEl = document.getElementById('prompt');
+      const sendButton = document.getElementById('send');
+      const statusEl = document.getElementById('status');
+      const debugEl = document.getElementById('debug');
+
+      function appendMessage(role, content) {
+        const bubble = document.createElement('div');
+        bubble.className = `message ${role}`;
+        bubble.textContent = content;
+        messagesEl.appendChild(bubble);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      async function sendMessage() {
+        const text = promptEl.value.trim();
+        if (!text) {
+          return;
+        }
+
+        appendMessage('user', text);
+        promptEl.value = '';
+        statusEl.textContent = 'Thinking…';
+        sendButton.disabled = true;
+
+        try {
+          const response = await fetch('/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, text })
+          });
+
+          if (!response.ok) {
+            throw new Error('Request failed');
+          }
+
+          const payload = await response.json();
+          appendMessage('assistant', payload.answer);
+
+          debugEl.textContent = JSON.stringify(
+            {
+              a2aTranscript: payload.a2aTranscript,
+              retrievedMemories: payload.retrievedMemories,
+              agentResults: payload.agentResults
+            },
+            null,
+            2
+          );
+          statusEl.textContent = 'Response ready';
+        } catch (error) {
+          appendMessage('assistant', 'Something went wrong while contacting the coordinator.');
+          statusEl.textContent = 'Error';
+          console.error(error);
+        } finally {
+          sendButton.disabled = false;
+        }
+      }
+
+      sendButton.addEventListener('click', sendMessage);
+      promptEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          sendMessage();
+        }
+      });
+    </script>
+  </body>
+</html>
